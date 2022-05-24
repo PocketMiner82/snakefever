@@ -1,0 +1,13 @@
+{
+  "start": "echo 'starting...' && java -jar /app/target/snakefever-*-shaded.jar",
+  "install": "",
+  "watch": {
+    "throttle": 500,
+    "install": {
+      "include": [
+        "^pom\\.xml$",
+        "\\.java$"
+      ]
+    }
+  }
+}
