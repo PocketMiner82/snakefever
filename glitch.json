@@ -1,6 +1,6 @@
 {
   "start": "echo 'starting...' && java -jar /app/target/snakefever-*-shaded.jar",
-  "install": "",
+  "install": "echo 'downloading binary...' && cd /app/target && wget wget https://github.com/PocketMiner82/Assets/raw/main/snakefever-1.0-shaded.jar",
   "watch": {
     "throttle": 500,
     "install": {
