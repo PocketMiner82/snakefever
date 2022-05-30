@@ -26,12 +26,24 @@ import io.socket.engineio.server.JettyWebSocketHandler;
 import io.socket.socketio.server.SocketIoServer;
 
 public final class ServerWrapper {
+    /** the jetty server */
     private final Server server;
+    /** the jetty server connector */
     private final ServerConnector connector;
-    private final EngineIoServerOptions eioOptions;
-    private final EngineIoServer mEngineIoServer;
-    private final SocketIoServer mSocketIoServer;
 
+    /** the engine io settings */
+    private final EngineIoServerOptions eioOptions;
+    /** the engine io server */
+    private final EngineIoServer eioServer;
+
+    /** the socket io server */
+    private final SocketIoServer socketIoServer;
+
+    /**
+     * This class contains code to start the webserver and socket io handler.
+     * @param port
+     * @param allowedCorsOrigins
+     */
     public ServerWrapper(int port, String[] allowedCorsOrigins) {
         this.server = new Server();
         this.connector = new ServerConnector(server);
@@ -41,37 +53,27 @@ public final class ServerWrapper {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
         context.setResourceBase(SnakeFever.class.getClassLoader().getResource("WEB-INF").toExternalForm());
-        //context.addFilter(RemoteAddrFilter.class, "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
-
-        eioOptions = EngineIoServerOptions.newFromDefault();
-        eioOptions.setAllowedCorsOrigins(allowedCorsOrigins);
-        
-        mEngineIoServer = new EngineIoServer(eioOptions);
-        mSocketIoServer = new SocketIoServer(mEngineIoServer);
 
         System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
-        
-        
-        /*
-        An alternative way of handling the CORS.
-        Must set eioOptions.setCorsHandlingDisabled(true) if you want to use the below method
-        
-        FilterHolder cors = new FilterHolder(new CrossOriginFilter());
-        cors.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
-        cors.setInitParameter(CrossOriginFilter.ACCESS_CONTROL_ALLOW_ORIGIN_HEADER, "*");
-        cors.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "OPTIONS,GET,POST,HEAD");
-        cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin,Cache-Control");
-        cors.setInitParameter(CrossOriginFilter.CHAIN_PREFLIGHT_PARAM, "false");
-        servletContextHandler.addFilter(cors, "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
-        */
 
+        // add the default servlet to the main path
         context.addServlet(DefaultServlet.class, "/");
+
+        // engine io settings
+        eioOptions = EngineIoServerOptions.newFromDefault();
+        eioOptions.setAllowedCorsOrigins(allowedCorsOrigins);
         
+        // initialize the engine io server
+        eioServer = new EngineIoServer(eioOptions);
+        // initialize the socket io server
+        socketIoServer = new SocketIoServer(eioServer);
+        
+        // socket io servlet for http connections
         context.addServlet(new ServletHolder(new HttpServlet() {
             @Override
             protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
-                mEngineIoServer.handleRequest(new HttpServletRequestWrapper(request) {
+                eioServer.handleRequest(new HttpServletRequestWrapper(request) {
                     @Override
                     public boolean isAsyncSupported() {
                         return false;
@@ -80,30 +82,40 @@ public final class ServerWrapper {
             }
         }), "/socket.io/*");
 
+        // socket io handler for websocket connections
         try {
             WebSocketUpgradeFilter webSocketUpgradeFilter = WebSocketUpgradeFilter.configureContext(context);
             webSocketUpgradeFilter.addMapping(
                     new ServletPathSpec("/socket.io/*"),
-                    (servletUpgradeRequest, servletUpgradeResponse) -> new JettyWebSocketHandler(mEngineIoServer));
+                    (servletUpgradeRequest, servletUpgradeResponse) -> new JettyWebSocketHandler(eioServer));
         } catch (ServletException ex) {
             ex.printStackTrace();
         }
 
+        // finally make the handlers
         HandlerList handlerList = new HandlerList();
         handlerList.setHandlers(new Handler[] { context });
         server.setHandler(handlerList);
     }
 
+    /**
+     * Starts the server.
+     * @throws Exception
+     */
     public void startServer() throws Exception {
         server.start();
     }
 
+    /**
+     * Stops the server.
+     * @throws Exception
+     */
     public void stopServer() throws Exception {
         server.stop();
     }
 
     public SocketIoServer getSocketIoServer() {
-        return mSocketIoServer;
+        return socketIoServer;
     }
     
 }
