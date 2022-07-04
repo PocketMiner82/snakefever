@@ -1,9 +1,7 @@
-package de.backend.snakefever;
+package de.backend.snakefever.socketio;
 
 import java.io.IOException;
-import java.util.EnumSet;
 
-import javax.servlet.DispatcherType;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -20,6 +18,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 
+import de.backend.snakefever.SnakeFever;
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;

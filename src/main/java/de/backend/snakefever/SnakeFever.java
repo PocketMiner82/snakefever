@@ -1,11 +1,15 @@
 package de.backend.snakefever;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import de.backend.snakefever.socketio.ServerWrapper;
 import io.socket.emitter.Emitter;
 import io.socket.socketio.server.SocketIoNamespace;
-import io.socket.socketio.server.SocketIoServer;
 import io.socket.socketio.server.SocketIoSocket;
 
 public class SnakeFever {
@@ -13,23 +17,30 @@ public class SnakeFever {
     // Logger instance named "Pong".
     public static final Logger LOGGER = LogManager.getLogger(SnakeFever.class);
 
+    public static final Server SERVER = new Server();
+
+    private static final ScheduledExecutorService ticker = Executors.newScheduledThreadPool(10);
+
+    public static SocketIoNamespace ns;
+
     public static void main(String[] args) {
-        final ServerWrapper serverWrapper = new ServerWrapper(3000, null); // null means "allow all" as stated in https://github.com/socketio/engine.io-server-java/blob/f8cd8fc96f5ee1a027d9b8d9748523e2f9a14d2a/engine.io-server/src/main/java/io/socket/engineio/server/EngineIoServerOptions.java#L26
+        // null means "allow all" as stated in https://bit.ly/3Gz8WX4
+        final ServerWrapper serverWrapper = new ServerWrapper(3000, null);
         try {
             serverWrapper.startServer();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        SocketIoServer server = serverWrapper.getSocketIoServer();
-        SocketIoNamespace ns = server.namespace("/");
-        
+
+        ns = serverWrapper.getSocketIoServer().namespace("/");
+
         ns.on("connection", new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 SocketIoSocket socket = (SocketIoSocket) args[0];
-                LOGGER.info("Client " + socket.getId() + " has connected.");
+                SERVER.registerPlayer(socket);
 
-                socket.on("message", new Emitter.Listener() {
+                /*socket.on("message", new Emitter.Listener() {
                     @Override
                     public void call(Object... args) {
                         LOGGER.info("Client " + socket.getId() + " Receive:");
@@ -38,9 +49,13 @@ public class SnakeFever {
                         }
                         socket.send("message", "test message", 1);
                     }
-                });
-                
+                });*/
             }
         });
+
+        // tick the server
+        ticker.scheduleAtFixedRate(() -> {
+            SERVER.tick();
+        }, 0, 50, TimeUnit.MILLISECONDS);
     }
 }
