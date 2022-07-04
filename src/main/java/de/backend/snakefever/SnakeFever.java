@@ -24,6 +24,8 @@ public class SnakeFever {
     public static SocketIoNamespace ns;
 
     public static void main(String[] args) {
+        LOGGER.info("Starting SnakeFever...");
+
         // null means "allow all" as stated in https://bit.ly/3Gz8WX4
         final ServerWrapper serverWrapper = new ServerWrapper(3000, null);
         try {
@@ -57,5 +59,7 @@ public class SnakeFever {
         ticker.scheduleAtFixedRate(() -> {
             SERVER.tick();
         }, 0, 50, TimeUnit.MILLISECONDS);
+
+        LOGGER.info("Startup done!");
     }
 }
