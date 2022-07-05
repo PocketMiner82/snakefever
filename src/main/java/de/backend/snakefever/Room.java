@@ -3,7 +3,7 @@ package de.backend.snakefever;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.backend.snakefever.messageConstants.RoomMessageConstants;
+import de.backend.snakefever.messageConstants.MessageConstants;
 
 public class Room {
     public static final int MAX_PLAYERS = 8;
@@ -17,6 +17,13 @@ public class Room {
     public Room(String id, boolean quickplay) {
         this.id = id;
         this.quickplay = quickplay;
+    }
+    
+    public void addPlayer(Player player) {
+        this.players.add(player);
+        
+        SnakeFever.ns.broadcast(this.id, MessageConstants.EVENT_PLAYER_ROOM_JOIN_BROADCAST, player.getName());
+        SnakeFever.LOGGER.info("Player " + player.getName() + " joined room " + this.getId() + " (" + this.getOnlineVsMaxPlayers() + ")");
     }
 
     public boolean isFull() {
@@ -40,14 +47,11 @@ public class Room {
     public void removePlayer(Player player) {
         this.players.remove(player);
 
-        SnakeFever.ns.broadcast(this.id, RoomMessageConstants.EVENT_LEAVE, player.getName());
-        SnakeFever.LOGGER.info("Player " + player.getName() + " left room " + this.getId());
+        SnakeFever.ns.broadcast(this.id, MessageConstants.EVENT_PLAYER_ROOM_LEAVE_BROADCAST, player.getName());
+        SnakeFever.LOGGER.info("Player " + player.getName() + " left room " + this.getId() + " (" + this.getOnlineVsMaxPlayers() + ")");
     }
 
-    public void addPlayer(Player player) {
-        this.players.add(player);
-        
-        SnakeFever.ns.broadcast(this.id, RoomMessageConstants.EVENT_JOIN, player.getName());
-        SnakeFever.LOGGER.info("Player " + player.getName() + " joined room " + this.getId());
+    public String getOnlineVsMaxPlayers() {
+        return this.players.size() + "/" + MAX_PLAYERS;
     }
 }

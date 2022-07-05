@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-import de.backend.snakefever.messageConstants.RoomMessageConstants;
+import de.backend.snakefever.messageConstants.MessageConstants;
 import io.socket.socketio.server.SocketIoSocket;
 
 public class Server {
@@ -28,7 +28,7 @@ public class Server {
 
         Room room = null;
 
-        if (!id.equals(RoomMessageConstants.ERROR_INVALID_ID)) {
+        if (!id.equals(MessageConstants.ERROR_ROOM_INVALID_ID)) {
             room = new Room(id, quickplay);
             this.rooms.put(id, room);
         }
@@ -83,7 +83,7 @@ public class Server {
             if (!this.getRoomIds().contains(randomId))
                 break;
 
-            randomId = RoomMessageConstants.ERROR_ID_GENERATION_FAILED;
+            randomId = MessageConstants.ERROR_ROOM_ID_GENERATION_FAILED;
         }
 
         // ensure, that the id is 8 chars long

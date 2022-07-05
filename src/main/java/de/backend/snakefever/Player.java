@@ -1,8 +1,6 @@
 package de.backend.snakefever;
 
 import de.backend.snakefever.messageConstants.MessageConstants;
-import de.backend.snakefever.messageConstants.PlayerMessageConstants;
-import de.backend.snakefever.messageConstants.RoomMessageConstants;
 import io.socket.socketio.server.SocketIoSocket;
 
 public class Player {
@@ -25,17 +23,19 @@ public class Player {
     }
 
     private void registerListeners() {
-        socket.on(RoomMessageConstants.EVENT_CREATE_REQUEST, args -> onCreateRoomRequest(args));
-        socket.on(RoomMessageConstants.EVENT_JOIN_REQUEST, args -> onRoomJoinRequest(args));
-        socket.on(PlayerMessageConstants.EVENT_SET_NAME, args -> onPlayerNameSetRequest(args));
+        socket.on(MessageConstants.EVENT_ROOM_CREATE_REQUEST, args -> onCreateRoomRequest(args));
+        socket.on(MessageConstants.EVENT_ROOM_JOIN_REQUEST, args -> onRoomJoinRequest(args));
+        socket.on(MessageConstants.EVENT_PLAYER_SET_NAME_REQUEST, args -> onPlayerNameSetRequest(args));
+        socket.on(MessageConstants.EVENT_ROOM_LEAVE_REQUEST, args -> onRoomLeaveRequest(args));
         socket.on(MessageConstants.EVENT_DISCONNECT, args -> onDisconnect(args));
     }
 
     private void onCreateRoomRequest(Object... args) {
         if (args[0] instanceof Boolean) {
             Room room = this.getServer().createRoom((boolean) args[0]);
+            // tell the player, if the room id generation was not successfull
             if (room == null) {
-                this.socket.emit(MessageConstants.EVENT_ERROR, RoomMessageConstants.ERROR_ID_GENERATION_FAILED);
+                this.socket.emit(MessageConstants.EVENT_ROOM_JOIN_RESPONSE, MessageConstants.ERROR_ROOM_ID_GENERATION_FAILED);
                 SnakeFever.LOGGER.error("Room ID generation failed for Player: " + this.getName());
             } else {
                 this.joinRoom(room);
@@ -48,10 +48,8 @@ public class Player {
 
     private void onRoomJoinRequest(Object... args) {
         if (args[0] instanceof String) {
-            if (!this.joinRoom(((String)args[0]).toLowerCase())) {
-                this.socket.emit(MessageConstants.EVENT_ERROR, RoomMessageConstants.ERROR_INVALID_ID);
-                SnakeFever.LOGGER.warn("Player " + this.getName() + " tried to join non existing room: " + ((String)args[0]).toLowerCase());
-            }
+            // tell the player if the room id is valid
+            this.socket.emit(MessageConstants.EVENT_ROOM_JOIN_RESPONSE, this.joinRoom(((String)args[0]).toLowerCase()));
         } else {
             SnakeFever.LOGGER.error("Player " + this.getName() + " tried to join room with non string room id argument.");
             this.socket.emit(MessageConstants.EVENT_ERROR, MessageConstants.ERROR_INVALID_DATA);
@@ -60,11 +58,14 @@ public class Player {
 
     private void onPlayerNameSetRequest(Object... args) {
         if (args[0] instanceof String) {
-            String name = ((String) args[0]).substring(0, 16);
+            String name = (String) args[0];
+            // max 16 char name
+            name = name.length() > 16 ? name.substring(0, 16) : name;
             if (this.getServer().isNameTaken(name)) {
-                this.socket.emit(MessageConstants.EVENT_ERROR, PlayerMessageConstants.ERROR_NAME_TAKEN);
+                this.socket.emit(MessageConstants.EVENT_PLAYER_SET_NAME_RESPONSE, MessageConstants.ERROR_PLAYER_NAME_TAKEN);
                 SnakeFever.LOGGER.warn("Player " + this.getName() + " tried to change name to already existing name: " + name);
             } else {
+                this.socket.emit(MessageConstants.EVENT_PLAYER_SET_NAME_RESPONSE, name);
                 SnakeFever.LOGGER.info("Player " + this.getName() + " changed name to: " + name);
                 this.name = name;
             }
@@ -72,6 +73,10 @@ public class Player {
             SnakeFever.LOGGER.error("Tried to set player name with non string name argument.");
             this.socket.emit(MessageConstants.EVENT_ERROR, MessageConstants.ERROR_INVALID_DATA);
         }
+    }
+
+    private void onRoomLeaveRequest(Object... args) {
+        socket.emit(MessageConstants.EVENT_ROOM_LEAVE_RESPONSE, this.leaveRoom());
     }
 
     private void onDisconnect(Object... args) {
@@ -108,19 +113,21 @@ public class Player {
     /**
      * Adds the player to an existing room.
      * @param roomId the room id as a string.
-     * @returns if the room exists.
+     * @returns String if the join was success (room id) or not (room full, invalid id)
      */
-    public boolean joinRoom(String roomId) {
+    public String joinRoom(String roomId) {
         Room room = this.getServer().getRoomMap().get(roomId);
         // check if the room exists
         if (room == null) {
-            return false;
+            return MessageConstants.ERROR_ROOM_INVALID_ID;
+        } else if (room.isFull()) {
+            return MessageConstants.ERROR_ROOM_FULL;
         }
 
         // then join it
         this.joinRoom(room);
 
-        return true;
+        return room.getId();
     }
 
     /**
@@ -139,7 +146,7 @@ public class Player {
         this.room.addPlayer(this);
 
         this.socket.joinRoom(room.getId());
-        this.socket.emit(RoomMessageConstants.EVENT_JOIN_SUCCESS, room.getId());
+        this.socket.emit(MessageConstants.EVENT_ROOM_JOIN_RESPONSE, this.room.getId());
     }
 
     /**
@@ -151,10 +158,6 @@ public class Player {
 
         if (this.room != null) {
             this.room.removePlayer(this);
-            if (this.getSocket() != null) {
-                this.getSocket().emit(RoomMessageConstants.EVENT_LEAVE, this.room.getId());
-            }
-
             this.room = null;
             return true;
         }
