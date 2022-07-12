@@ -1,5 +1,6 @@
 package de.backend.snakefever;
 
+import de.backend.snakefever.game.IngamePlayer;
 import de.backend.snakefever.messageConstants.MessageConstants;
 import io.socket.socketio.server.SocketIoSocket;
 
@@ -7,6 +8,8 @@ public class Player {
     private final SocketIoSocket socket;
     private final Server server;
     private Room room;
+
+    private final IngamePlayer ingamePlayer = new IngamePlayer();
 
     private String name;
 
@@ -27,7 +30,8 @@ public class Player {
         socket.on(MessageConstants.EVENT_ROOM_JOIN_REQUEST, args -> onRoomJoinRequest(args));
         socket.on(MessageConstants.EVENT_PLAYER_SET_NAME_REQUEST, args -> onPlayerNameSetRequest(args));
         socket.on(MessageConstants.EVENT_ROOM_LEAVE_REQUEST, args -> onRoomLeaveRequest(args));
-        socket.on(MessageConstants.EVENT_DISCONNECT, args -> onDisconnect(args));
+        socket.on(MessageConstants.SERVERSIDE_EVENT_DISCONNECT, args -> onDisconnect(args));
+        socket.on(MessageConstants.EVENT_PLAYER_INPUT_REQUEST, args -> ingamePlayer.onPlayerInput(args));
     }
 
     private void onCreateRoomRequest(Object... args) {
@@ -42,7 +46,7 @@ public class Player {
             }
         } else {
             SnakeFever.LOGGER.error("Player " + this.getName() + " tried to create room with non boolean quickplay argument.");
-            this.socket.emit(MessageConstants.EVENT_ERROR, MessageConstants.ERROR_INVALID_DATA);
+            this.socket.emit(MessageConstants.EVENT_ERROR_RESPONSE, MessageConstants.ERROR_INVALID_DATA);
         }
     }
 
@@ -52,7 +56,7 @@ public class Player {
             this.socket.emit(MessageConstants.EVENT_ROOM_JOIN_RESPONSE, this.joinRoom(((String)args[0]).toLowerCase()));
         } else {
             SnakeFever.LOGGER.error("Player " + this.getName() + " tried to join room with non string room id argument.");
-            this.socket.emit(MessageConstants.EVENT_ERROR, MessageConstants.ERROR_INVALID_DATA);
+            this.socket.emit(MessageConstants.EVENT_ERROR_RESPONSE, MessageConstants.ERROR_INVALID_DATA);
         }
     }
 
@@ -61,17 +65,13 @@ public class Player {
             String name = (String) args[0];
             // max 16 char name
             name = name.length() > 16 ? name.substring(0, 16) : name;
-            if (this.getServer().isNameTaken(name)) {
-                this.socket.emit(MessageConstants.EVENT_PLAYER_SET_NAME_RESPONSE, MessageConstants.ERROR_PLAYER_NAME_TAKEN);
-                SnakeFever.LOGGER.warn("Player " + this.getName() + " tried to change name to already existing name: " + name);
-            } else {
-                this.socket.emit(MessageConstants.EVENT_PLAYER_SET_NAME_RESPONSE, name);
-                SnakeFever.LOGGER.info("Player " + this.getName() + " changed name to: " + name);
-                this.name = name;
-            }
+
+            this.socket.emit(MessageConstants.EVENT_PLAYER_SET_NAME_RESPONSE, name);
+            SnakeFever.LOGGER.info("Player " + this.getName() + " changed name to: " + name);
+            this.name = name;
         } else {
             SnakeFever.LOGGER.error("Tried to set player name with non string name argument.");
-            this.socket.emit(MessageConstants.EVENT_ERROR, MessageConstants.ERROR_INVALID_DATA);
+            this.socket.emit(MessageConstants.EVENT_ERROR_RESPONSE, MessageConstants.ERROR_INVALID_DATA);
         }
     }
 
@@ -84,14 +84,16 @@ public class Player {
     }
 
     public String getName() {
-        return this.name;
+        return this.name + "#" + this.socket.getId();
     }
 
     /**
      * Updates the player position, etc.
      */
     public void tick() {
-
+        if (this.ingamePlayer != null && this.isIngame()) {
+            this.ingamePlayer.tick();
+        }
     }
 
     public Server getServer() {
@@ -133,8 +135,8 @@ public class Player {
     /**
      * Returns if the player currently is in a room or not.
      */
-    public boolean isIdle() {
-        return this.room == null;
+    public boolean isIngame() {
+        return this.room != null;
     }
 
     /**
