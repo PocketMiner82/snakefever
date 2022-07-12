@@ -3,7 +3,7 @@ package de.backend.snakefever.messageConstants;
 /**
  * This class contains possible messages that can be send via SocketIO.<p>
  * If the field name ends with REQUEST, then the client emits messages to this event and the server listens to it.<p>
- * If it ends with RESPONSE, then the client listens and the server emits.
+ * If it ends with RESPONSE, then the client listens and the server emits.<p>
  * If it ends with BROADCAST, it was sent from the server to all players in a room.
  */
 public final class MessageConstants {
