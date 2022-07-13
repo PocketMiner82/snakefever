@@ -35,18 +35,13 @@ public class Player {
     }
 
     private void onCreateRoomRequest(Object... args) {
-        if (args[0] instanceof Boolean) {
-            Room room = this.getServer().createRoom((boolean) args[0]);
-            // tell the player, if the room id generation was not successfull
-            if (room == null) {
-                this.socket.emit(MessageConstants.EVENT_ROOM_JOIN_RESPONSE, MessageConstants.ERROR_ROOM_ID_GENERATION_FAILED);
-                SnakeFever.LOGGER.error("Room ID generation failed for Player: " + this.getName());
-            } else {
-                this.joinRoom(room);
-            }
+        Room room = this.getServer().createRoom(false);
+        // tell the player, if the room id generation was not successfull
+        if (room == null) {
+            this.socket.emit(MessageConstants.EVENT_ROOM_JOIN_RESPONSE, MessageConstants.ERROR_ROOM_ID_GENERATION_FAILED);
+            SnakeFever.LOGGER.error("Room ID generation failed for Player: " + this.getName());
         } else {
-            SnakeFever.LOGGER.error("Player " + this.getName() + " tried to create room with non boolean quickplay argument.");
-            this.socket.emit(MessageConstants.EVENT_ERROR_RESPONSE, MessageConstants.ERROR_INVALID_DATA);
+            this.joinRoom(room);
         }
     }
 
@@ -118,7 +113,8 @@ public class Player {
      * @returns String if the join was success (room id) or not (room full, invalid id)
      */
     public String joinRoom(String roomId) {
-        Room room = this.getServer().getRoomMap().get(roomId);
+        Room room = roomId.equals(MessageConstants.ROOM_QUICKPLAY) ? this.getServer().findQuickPlayRoom() : this.getServer().getRoomMap().get(roomId);
+        
         // check if the room exists
         if (room == null) {
             return MessageConstants.ERROR_ROOM_INVALID_ID;

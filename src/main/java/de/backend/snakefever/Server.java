@@ -10,7 +10,9 @@ import de.backend.snakefever.messageConstants.MessageConstants;
 import io.socket.socketio.server.SocketIoSocket;
 
 public class Server {
+    // a map of all rooms with the id as key and the room as value
     private final Map<String, Room> rooms = new HashMap<>();
+    // a list of all players
     private final List<Player> players = new ArrayList<>();
 
     /**
@@ -23,12 +25,17 @@ public class Server {
         SnakeFever.LOGGER.info("Player " + player.getName() + " connected.");
     }
 
+    /**
+     * Creates a room with the requested id.
+     * @param quickplay
+     * @return the created room.
+     */
     public Room createRoom(boolean quickplay) {
-        String id = quickplay ? this.findQuickPlayRoomId() : this.findEmptyRoomId();
+        String id = this.findEmptyRoomId();
 
         Room room = null;
 
-        if (!id.equals(MessageConstants.ERROR_ROOM_INVALID_ID)) {
+        if (!id.equals(MessageConstants.ERROR_ROOM_ID_GENERATION_FAILED)) {
             room = new Room(id, quickplay);
             this.rooms.put(id, room);
         }
@@ -61,16 +68,20 @@ public class Server {
      * Searches for a quickplay room id.
      * @return a room, where quickplay is true and that is not full.
      */
-    private String findQuickPlayRoomId() {
+    public Room findQuickPlayRoom() {
         for (Room room : this.getRooms()) {
             if (room.isQuickplay() && !room.isFull()) {
-                return room.getId();
+                return room;
             }
         }
 
-        return this.findEmptyRoomId();
+        return this.createRoom(true);
     }
 
+    /**
+     * Find an id of an empty room.
+     * @return the id as string.
+     */
     private String findEmptyRoomId() {
         String randomId = "";
 
@@ -89,7 +100,7 @@ public class Server {
         // ensure, that the id is 8 chars long
         int missingChars = 8 - randomId.length();
         for (int i = 0; i < missingChars; i++) {
-            randomId = "0" + randomId;
+            randomId += "0";
         }
 
         return randomId;
