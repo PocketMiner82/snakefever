@@ -120,7 +120,7 @@ public class Server {
     public void removePlayer(Player player) {
         player.leaveRoom();
         this.players.remove(player);
-        SnakeFever.LOGGER.info("Player " + player.getName() + " (Socket ID: " + player.getSocket().getId() + ") disconnected.");
+        SnakeFever.LOGGER.info("Player " + player.getName() + " disconnected.");
     }
 
     /**
