@@ -8,13 +8,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.backend.snakefever.socketio.ServerWrapper;
-import io.socket.emitter.Emitter;
+import io.socket.engineio.server.Emitter;
 import io.socket.socketio.server.SocketIoNamespace;
 import io.socket.socketio.server.SocketIoSocket;
 
 public class SnakeFever {
     // Define a static logger variable so that it references the
-    // Logger instance named "Pong".
+    // Logger instance named "SnakeFever".
     public static final Logger LOGGER = LogManager.getLogger(SnakeFever.class);
 
     public static final Server SERVER = new Server();
